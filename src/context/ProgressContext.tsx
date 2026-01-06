@@ -7,9 +7,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 // ========================================
 
 interface ProgressContextType {
-  completedLessons: string[];
-  markLessonComplete: (lessonId: string) => void;
-  isLessonComplete: (lessonId: string) => boolean;
+  completedItems: string[];
+  markComplete: (id: string) => void;
+  toggleComplete: (id: string) => void;
+  isCompleted: (id: string) => boolean;
   getProgress: () => { completed: number; total: number; percentage: number };
   resetProgress: () => void;
 }
@@ -23,21 +24,26 @@ interface ProgressProviderProps {
 // 🔧 CONSTANTS
 // ========================================
 
-const STORAGE_KEY = 'learning-typescript-progress';
-const DEFAULT_TOTAL_LESSONS = 12; // 6 modules * 2 average lessons
+const STORAGE_KEY = "learning-typescript-progress-v2";
+const DEFAULT_TOTAL_ITEMS = 13; // Updated to match total content
 
 // ========================================
 // 📦 CONTEXT
 // ========================================
 
-const ProgressContext = createContext<ProgressContextType | undefined>(undefined);
+const ProgressContext = createContext<ProgressContextType | undefined>(
+  undefined
+);
 
 // ========================================
 // 🎯 PROVIDER
 // ========================================
 
-export function ProgressProvider({ children, totalLessons = DEFAULT_TOTAL_LESSONS }: ProgressProviderProps) {
-  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
+export function ProgressProvider({
+  children,
+  totalLessons = DEFAULT_TOTAL_ITEMS,
+}: ProgressProviderProps) {
+  const [completedItems, setCompletedItems] = useState<string[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Load progress from localStorage on mount
@@ -47,11 +53,11 @@ export function ProgressProvider({ children, totalLessons = DEFAULT_TOTAL_LESSON
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          setCompletedLessons(parsed);
+          setCompletedItems(parsed);
         }
       }
     } catch (error) {
-      console.error('Error loading progress:', error);
+      console.error("Error loading progress:", error);
     }
     setIsHydrated(true);
   }, []);
@@ -60,29 +66,39 @@ export function ProgressProvider({ children, totalLessons = DEFAULT_TOTAL_LESSON
   useEffect(() => {
     if (isHydrated) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(completedLessons));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(completedItems));
       } catch (error) {
-        console.error('Error saving progress:', error);
+        console.error("Error saving progress:", error);
       }
     }
-  }, [completedLessons, isHydrated]);
+  }, [completedItems, isHydrated]);
 
-  // Mark a lesson as complete
-  const markLessonComplete = (lessonId: string) => {
-    setCompletedLessons(prev => {
-      if (prev.includes(lessonId)) return prev;
-      return [...prev, lessonId];
+  // Mark an item as complete
+  const markComplete = (id: string) => {
+    setCompletedItems((prev) => {
+      if (prev.includes(id)) return prev;
+      return [...prev, id];
     });
   };
 
-  // Check if a lesson is complete
-  const isLessonComplete = (lessonId: string) => {
-    return completedLessons.includes(lessonId);
+  // Toggle item completion
+  const toggleComplete = (id: string) => {
+    setCompletedItems((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
+      }
+      return [...prev, id];
+    });
+  };
+
+  // Check if an item is complete
+  const isCompleted = (id: string) => {
+    return completedItems.includes(id);
   };
 
   // Get progress statistics
   const getProgress = () => {
-    const completed = completedLessons.length;
+    const completed = completedItems.length;
     const total = totalLessons;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { completed, total, percentage };
@@ -90,18 +106,19 @@ export function ProgressProvider({ children, totalLessons = DEFAULT_TOTAL_LESSON
 
   // Reset all progress
   const resetProgress = () => {
-    setCompletedLessons([]);
+    setCompletedItems([]);
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (error) {
-      console.error('Error resetting progress:', error);
+      console.error("Error resetting progress:", error);
     }
   };
 
   const value: ProgressContextType = {
-    completedLessons,
-    markLessonComplete,
-    isLessonComplete,
+    completedItems,
+    markComplete,
+    toggleComplete,
+    isCompleted,
     getProgress,
     resetProgress,
   };
@@ -120,7 +137,7 @@ export function ProgressProvider({ children, totalLessons = DEFAULT_TOTAL_LESSON
 export function useProgress() {
   const context = useContext(ProgressContext);
   if (context === undefined) {
-    throw new Error('useProgress must be used within a ProgressProvider');
+    throw new Error("useProgress must be used within a ProgressProvider");
   }
   return context;
 }
@@ -130,7 +147,7 @@ export function useProgress() {
 // ========================================
 
 export function ProgressIndicator() {
-  const { getProgress, completedLessons } = useProgress();
+  const { getProgress, completedItems } = useProgress();
   const { completed, total, percentage } = getProgress();
 
   if (completed === 0) return null;
@@ -138,7 +155,7 @@ export function ProgressIndicator() {
   return (
     <div className="flex items-center gap-3">
       <div className="w-32 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-        <div 
+        <div
           className="h-full bg-linear-to-r from-indigo-500 to-cyan-500 rounded-full transition-all duration-500"
           style={{ width: `${percentage}%` }}
         />
@@ -155,19 +172,28 @@ export function ProgressIndicator() {
 // ========================================
 
 interface LessonCheckProps {
-  lessonId: string;
+  id: string; // Generic ID
   className?: string;
 }
 
-export function LessonCheck({ lessonId, className = '' }: LessonCheckProps) {
-  const { isLessonComplete } = useProgress();
-  
-  if (!isLessonComplete(lessonId)) return null;
+export function LessonCheck({ id, className = "" }: LessonCheckProps) {
+  const { isCompleted } = useProgress();
+
+  if (!isCompleted(id)) return null;
 
   return (
     <span className={`text-green-500 ${className}`} title="Completed">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className="w-5 h-5"
+      >
+        <path
+          fillRule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+          clipRule="evenodd"
+        />
       </svg>
     </span>
   );

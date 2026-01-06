@@ -1,22 +1,68 @@
 "use client";
 
 import Link from "next/link";
-import { useGlobalProgress } from "@/src/hooks/useProgress";
+import { useProgress } from "@/src/context/ProgressContext";
 import { useLanguage } from "@/src/i18n/LanguageContext";
 import { Card, Badge } from "@/src/components/ui";
 import { CheckCircleIcon, ArrowRightIcon } from "@/src/components/icons";
+import { useLocalizedList } from "@/src/hooks/useLocalizedContent";
 
 // ========================================
 // 🎨 PROJECT DATA
 // ========================================
 
 const projectsData = [
-  { id: "calculator", href: "/projects/calculator", difficultyKey: "easy", week: 1, icon: "🧮" },
-  { id: "todo", href: "/projects/todo", difficultyKey: "easy", week: 2, icon: "✅" },
-  { id: "guess-game", href: "/projects/guess-game", difficultyKey: "medium", week: 3, icon: "🎯" },
-  { id: "contacts", href: "/projects/contacts", difficultyKey: "medium", week: 4, icon: "👥" },
-  { id: "shopping-cart", href: "/projects/shopping-cart", difficultyKey: "hard", week: 5, icon: "🛒" },
-  { id: "api-dashboard", href: "/projects/api-dashboard", difficultyKey: "hard", week: 6, icon: "📊" },
+  {
+    id: "calculator",
+    href: "/projects/calculator",
+    difficultyKey: "easy",
+    week: 1,
+    icon: "🧮",
+  },
+  {
+    id: "todo",
+    href: "/projects/todo",
+    difficultyKey: "easy",
+    week: 2,
+    icon: "✅",
+  },
+  {
+    id: "guess-game",
+    href: "/projects/guess-game",
+    difficultyKey: "medium",
+    week: 3,
+    icon: "🎯",
+  },
+  {
+    id: "contacts",
+    href: "/projects/contacts",
+    difficultyKey: "medium",
+    week: 4,
+    icon: "👥",
+  },
+  {
+    id: "shopping-cart",
+    href: "/projects/shopping-cart",
+    difficultyKey: "hard",
+    week: 5,
+    icon: "🛒",
+  },
+  {
+    id: "api-dashboard",
+    href: "/projects/api-dashboard",
+    difficultyKey: "hard",
+    week: 6,
+    icon: "📊",
+  },
+];
+
+const projectKeys = [
+  "calculator",
+  "todo",
+  "guess",
+  "contacts",
+  "cart",
+  "api_dashboard",
 ];
 
 // ========================================
@@ -24,34 +70,38 @@ const projectsData = [
 // ========================================
 
 export default function ProjectsPage() {
-  const { completedItems } = useGlobalProgress();
+  const { completedItems } = useProgress();
   const { t } = useLanguage();
 
-  // Map projects
-  const projects = projectsData.map((data, index) => {
-    const projectKey = ['calculator', 'todo', 'guess', 'contacts', 'cart', 'api_dashboard'][index] as keyof typeof t.projects.list;
-    return {
-      ...data,
-      title: t.projects.list[projectKey].title,
-      description: t.projects.list[projectKey].desc,
-      difficultyLabel: t.projects.difficulty[data.difficultyKey as keyof typeof t.projects.difficulty],
-    };
-  });
+  const projects = useLocalizedList(
+    projectsData,
+    (t) => t.projects.list,
+    projectKeys
+  ).map((p) => ({
+    ...p,
+    title: p.title,
+    description: p.desc,
+    difficultyLabel:
+      t.projects.difficulty[
+        p.difficultyKey as keyof typeof t.projects.difficulty
+      ],
+  }));
 
-  const completedCount = projects.filter(p => completedItems.includes(p.id)).length;
+  const completedCount = projects.filter((p) =>
+    completedItems.includes(p.id)
+  ).length;
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="relative">
-        {/* Background decoration */}
-        <div 
+        <div
           className="absolute inset-0 -z-10 opacity-20"
           style={{
-            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%)`
+            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%)`,
           }}
         />
-        
+
         <div className="text-center sm:text-left">
           <span className="text-4xl mb-4 block">🛠️</span>
           <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-5xl">
@@ -66,7 +116,8 @@ export default function ProjectsPage() {
             <div className="mt-6 inline-flex items-center gap-3 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30">
               <CheckCircleIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
               <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                {completedCount} {t.quiz.of} {projects.length} {t.projects.completed.toLowerCase()}
+                {completedCount} {t.quiz.of} {projects.length}{" "}
+                {t.projects.completed.toLowerCase()}
               </span>
             </div>
           )}
@@ -77,13 +128,15 @@ export default function ProjectsPage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => {
           const isCompleted = completedItems.includes(project.id);
-          
+
           return (
             <Link key={project.href} href={project.href} className="group">
-              <Card 
-                hover 
+              <Card
+                hover
                 className={`h-full relative overflow-hidden ${
-                  isCompleted ? 'ring-2 ring-green-500/20 bg-green-50/50 dark:bg-green-900/10' : ''
+                  isCompleted
+                    ? "ring-2 ring-green-500/20 bg-green-50/50 dark:bg-green-900/10"
+                    : ""
                 }`}
               >
                 {/* Completed badge */}
@@ -105,10 +158,13 @@ export default function ProjectsPage() {
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
                       {t.projects.week} {project.week}
                     </span>
-                    <Badge 
+                    <Badge
                       variant={
-                        project.difficultyKey === 'easy' ? 'success' :
-                        project.difficultyKey === 'medium' ? 'intermediate' : 'error'
+                        project.difficultyKey === "easy"
+                          ? "success"
+                          : project.difficultyKey === "medium"
+                          ? "intermediate"
+                          : "error"
                       }
                     >
                       {project.difficultyLabel}
